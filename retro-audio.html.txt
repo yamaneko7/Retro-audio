@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>CAR AUDIO</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+@font-face {
+  font-family: 'DSEG7';
+  src: url('https://unpkg.com/dseg@0.46.0/fonts/DSEG7-Classic/DSEG7Classic-Regular.woff2') format('woff2'),
+       url('https://unpkg.com/dseg@0.46.0/fonts/DSEG7-Classic/DSEG7Classic-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'DSEG14';
+  src: url('https://unpkg.com/dseg@0.46.0/fonts/DSEG14-Classic/DSEG14Classic-Regular.woff2') format('woff2'),
+       url('https://unpkg.com/dseg@0.46.0/fonts/DSEG14-Classic/DSEG14Classic-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body {
+  width:100%; height:100%;
+  background:#000;
+  display:flex; align-items:center; justify-content:center;
+  overflow:hidden;
+  font-family:'Share Tech Mono',monospace;
+}
+
+/* 16:9横画面ユニット */
+.unit {
+  position:relative;
+  width:min(100vw, 177.78vh);
+  height:min(100vh, 56.25vw);
+  background:#04040e;
+  overflow:hidden;
+}
+/* スキャンライン */
+.unit::before {
+  content:''; position:absolute; inset:0; z-index:100; pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.08) 2px,rgba(0,0,0,0.08) 4px);
+}
+
+/* ── 上部バー ── */
+.top-bar {
+  position:absolute; top:0; left:0; right:0;
+  height:14%;
+  display:flex; align-items:center;
+  padding:0 1.5%;
+  background:linear-gradient(180deg,#06061a,#03030e);
+  border-bottom:1px solid #111130;
+  z-index:10;
+}
+.clock {
+  font-family:'DSEG7', monospace;
+  font-size:4.2vh; font-weight:400;
+  color:#66ccff; text-shadow:0 0 12px #44aaff, 0 0 24px #2266aa44;
+  letter-spacing:0.05em;
+  flex-shrink:0;
+  width:16%;
+}
+.scroll-wrap {
+  flex:1; overflow:hidden; margin:0 1%;
+  position:relative;
+  text-align:center;
+}
+.scroll-text {
+  white-space:nowrap;
+  font-family:'Orbitron',sans-serif;
+  font-size:2.0vh; font-weight:700;
+  color:#aa9944; text-shadow:0 0 6px #887733;
+  letter-spacing:0.15em;
+  display:inline-block;
+  animation: marquee 18s linear infinite;
+}
+@keyframes marquee {
+  0%   { transform: translateX(60%); }
+  100% { transform: translateX(-100%); }
+}
+.track-info {
+  text-align:right;
+  flex-shrink:0;
+  width:16%;
+}
+.track-no {
+  font-family:'DSEG14', 'DSEG7', monospace;
+  font-size:3.6vh; font-weight:400;
+  color:#00ccff; text-shadow:0 0 10px #0099cc, 0 0 20px #006688aa;
+  letter-spacing:0.05em;
+}
+.track-total {
+  font-size:1.3vh; color:#224466; letter-spacing:0.1em;
+}
+
+/* ── メインキャンバス ── */
+#mainCanvas {
+  position:absolute;
+  top:14%; left:0; right:0;
+  width:100%;
+  height:72%;
+  display:block;
+}
+
+/* ── 下部コントロール ── */
+.bottom-bar {
+  position:absolute; bottom:0; left:0; right:0;
+  height:14%;
+  display:flex; align-items:center; justify-content:center;
+  gap:1.5%;
+  padding:0 2%;
+  background:linear-gradient(0deg,#06061a,#03030e);
+  border-top:1px solid #111130;
+  z-index:10;
+}
+.btn {
+  background: transparent;
+  border:1px solid #2a2a4a;
+  border-radius:1px;
+  color:#3a5a7a;
+  font-family:'Share Tech Mono',monospace;
+  font-size:1.6vh;
+  cursor:pointer;
+  padding:0.5vh 3vw;
+  letter-spacing:0.2em;
+  transition:all 0.1s;
+}
+.btn:hover { border-color:#4488aa; color:#66aacc; }
+.btn:active { border-color:#66ccff; color:#99ddff; transform:scale(0.97); }
+.btn.play {
+  color:#336655;
+  border-color:#224433;
+  font-size:2vh;
+  padding:0.5vh 4vw;
+  letter-spacing:0;
+}
+.btn.play:hover { border-color:#448866; color:#55aa88; }
+.btn.search {
+  color:#554422;
+  border-color:#332211;
+  font-size:1.3vh;
+  letter-spacing:0.2em;
+  padding:0.5vh 1.5vw;
+}
+.btn.search:hover { border-color:#886633; color:#aa8844; }
+
+/* MICボタン */
+.mic-btn {
+  background:transparent; border:1px solid #1a1a2a; border-radius:1px;
+  color:#1a2a2a; font-family:'Share Tech Mono',monospace;
+  font-size:1.2vh; letter-spacing:0.2em; padding:0.5vh 1vw;
+  cursor:pointer; transition:all 0.15s; margin-left:0.5%;
+}
+.mic-btn:hover { border-color:#224444; color:#336666; }
+.mic-btn.on { border-color:#224433; color:#336655; }
+</style>
+</head>
+<body>
+<div class="unit">
+  <!-- 上部バー -->
+  <div class="top-bar">
+    <canvas id="clockCanvas" style="flex-shrink:0; width:16%; height:100%;"></canvas>
+    <div class="scroll-wrap">
+      <div class="scroll-text" id="scrollText">NO TITLE &nbsp;&nbsp;&nbsp;---&nbsp;&nbsp;&nbsp; NO ARTIST</div>
+    </div>
+    <canvas id="trackCanvas" style="flex-shrink:0; width:16%; height:100%; text-align:right;"></canvas>
+  </div>
+
+  <!-- メインキャンバス -->
+  <canvas id="mainCanvas"></canvas>
+
+  <!-- 下部コントロール -->
+  <div class="bottom-bar">
+    <button class="btn" onclick="prevTrack()">◀◀</button>
+    <button class="btn play" id="playBtn" onclick="togglePlay()">▶</button>
+    <button class="btn" onclick="nextTrack()">▶▶</button>
+    <label class="btn search" for="fileInput">FILE</label>
+    <input type="file" id="fileInput" accept="audio/*" style="display:none" onchange="loadFile(event)">
+    <button class="btn search" onclick="playRadio()">RADIO</button>
+    <button class="mic-btn" id="micBtn" onclick="toggleMic()">MIC</button>
+  </div>
+</div>
+
+<script>
+const BANDS   = 14;
+const CELLS   = 18;
+
+const TRACKS = [
+  { title:'CRUISING NIGHT',    artist:'UNKNOWN ARTIST',  no:'01', total:'12' },
+  { title:'MIDNIGHT HIGHWAY',  artist:'DEMO BAND',       no:'02', total:'12' },
+  { title:'SUMMER DRIVE',      artist:'RETRO AUDIO',     no:'03', total:'12' },
+  { title:'MIC INPUT',         artist:'LIVE ANALYSIS',   no:'--', total:'--' },
+];
+
+let playing=false, micActive=false, trackIdx=0, animId=null;
+let audioCtx=null, analyser=null, analyserBuf=null, micStream=null;
+let levels=new Array(BANDS).fill(0);
+let targets=new Array(BANDS).fill(0);
+let peaks=new Array(BANDS).fill(0);
+let tick=0;
+
+// ── 7セグメント描画 ──
+// セグメント定義（a上 b右上 c右下 d下 e左下 f左上 g中）
+const SEG_MAP = {
+  '0':[1,1,1,1,1,1,0], '1':[0,1,1,0,0,0,0], '2':[1,1,0,1,1,0,1],
+  '3':[1,1,1,1,0,0,1], '4':[0,1,1,0,0,1,1], '5':[1,0,1,1,0,1,1],
+  '6':[1,0,1,1,1,1,1], '7':[1,1,1,0,0,0,0], '8':[1,1,1,1,1,1,1],
+  '9':[1,1,1,1,0,1,1], '-':[0,0,0,0,0,0,1], ' ':[0,0,0,0,0,0,0],
+  ':':[0,0,0,0,0,0,0], '/':[0,0,0,0,0,0,0],
+};
+
+function drawSeg(ctx, W, H, text, color, bgColor){
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#010108';
+  ctx.fillRect(0,0,W,H);
+
+  const chars = text.split('');
+  // コロンやスラッシュを特殊扱い
+  const N = chars.length;
+  const dotW  = W * 0.04;
+  const charW = (W - dotW * text.split('').filter(c=>c===':'||c==='/').length) / N * 0.85;
+  const charH = H * 0.72;
+  const thick = charW * 0.13;
+  const gap   = (W - charW * N) / (N + 1);
+
+  let xOff = gap * 0.5;
+
+  chars.forEach(ch => {
+    if(ch === ':' || ch === '/'){
+      // コロン・スラッシュ：点2つ
+      const dotR = thick * 0.7;
+      const cx   = xOff + dotW * 0.5;
+      // 暗い点（背景）
+      ctx.fillStyle = bgColor;
+      ctx.beginPath(); ctx.arc(cx, H*0.3, dotR*1.2, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, H*0.7, dotR*1.2, 0, Math.PI*2); ctx.fill();
+      // 光る点
+      ctx.fillStyle = color;
+      ctx.shadowColor = color; ctx.shadowBlur = 6;
+      ctx.beginPath(); ctx.arc(cx, H*0.3, dotR, 0, Math.PI*2); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx, H*0.7, dotR, 0, Math.PI*2); ctx.fill();
+      ctx.shadowBlur = 0;
+      xOff += dotW + gap * 0.3;
+      return;
+    }
+
+    const segs = SEG_MAP[ch] || SEG_MAP[' '];
+    const x = xOff;
+    const y = (H - charH) / 2;
+    const w = charW, h = charH, t = thick;
+
+    // セグメント座標定義 [on/off, path points]
+    const segPaths = [
+      // a: 上
+      [[x+t,y],[x+w-t,y],[x+w-t*0.7,y+t],[x+t*0.7,y+t]],
+      // b: 右上
+      [[x+w,y+t],[x+w,y+h/2-t*0.3],[x+w-t,y+h/2],[x+w-t,y+t*0.7]],
+      // c: 右下
+      [[x+w,y+h/2+t*0.3],[x+w,y+h-t],[x+w-t,y+h-t*0.7],[x+w-t,y+h/2]],
+      // d: 下
+      [[x+t,y+h],[x+w-t,y+h],[x+w-t*0.7,y+h-t],[x+t*0.7,y+h-t]],
+      // e: 左下
+      [[x,y+h/2+t*0.3],[x,y+h-t],[x+t,y+h-t*0.7],[x+t,y+h/2]],
+      // f: 左上
+      [[x,y+t],[x,y+h/2-t*0.3],[x+t,y+h/2],[x+t,y+t*0.7]],
+      // g: 中
+      [[x+t*0.7,y+h/2-t*0.4],[x+w-t*0.7,y+h/2-t*0.4],[x+w-t*0.3,y+h/2],[x+w-t*0.7,y+h/2+t*0.4],[x+t*0.7,y+h/2+t*0.4],[x+t*0.3,y+h/2]],
+    ];
+
+    segPaths.forEach((pts, i) => {
+      const on = segs[i];
+      ctx.fillStyle = on ? color : bgColor;
+      if(on){ ctx.shadowColor=color; ctx.shadowBlur=8; }
+      else  { ctx.shadowBlur=0; }
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      pts.slice(1).forEach(p => ctx.lineTo(p[0],p[1]));
+      ctx.closePath();
+      ctx.fill();
+    });
+    ctx.shadowBlur=0;
+    xOff += charW + gap * 0.5;
+  });
+}
+
+// ── 時計canvas ──
+const clockC  = document.getElementById('clockCanvas');
+const clockCtx = clockC.getContext('2d');
+function resizeClockCanvas(){
+  const bar = document.querySelector('.top-bar');
+  clockC.width  = bar.clientWidth * 0.16;
+  clockC.height = bar.clientHeight;
+}
+
+// ── トラックcanvas ──
+const trackC   = document.getElementById('trackCanvas');
+const trackCtx = trackC.getContext('2d');
+function resizeTrackCanvas(){
+  const bar = document.querySelector('.top-bar');
+  trackC.width  = bar.clientWidth * 0.16;
+  trackC.height = bar.clientHeight;
+}
+
+function updateClock(){
+  const now=new Date();
+  const h=String(now.getHours()).padStart(2,'0');
+  const m=String(now.getMinutes()).padStart(2,'0');
+  drawSeg(clockCtx, clockC.width, clockC.height, h+':'+m, '#66ccff', '#001428');
+}
+
+function updateTrackDisplay(){
+  const t = TRACKS[trackIdx];
+  drawSeg(trackCtx, trackC.width, trackC.height, t.no+'/'+t.total, '#00ccff', '#001428');
+}
+
+function initCanvases(){
+  resizeClockCanvas();
+  resizeTrackCanvas();
+  updateClock();
+  updateTrackDisplay();
+}
+window.addEventListener('resize', ()=>{ initCanvases(); });
+setTimeout(initCanvases, 100);
+setInterval(updateClock, 1000);
+
+// ── トラック情報更新 ──
+function updateInfo(){
+  const t=TRACKS[trackIdx];
+  document.getElementById('scrollText').textContent =
+    t.title + '　　　　' + t.artist + '　　　　' + t.title + '　　　　' + t.artist;
+  updateTrackDisplay();
+}
+updateInfo();
+
+// ── キャンバスサイズをユニットに合わせる ──
+const mc = document.getElementById('mainCanvas');
+const mctx = mc.getContext('2d');
+
+function resizeCanvas(){
+  const unit = document.querySelector('.unit');
+  mc.width  = unit.clientWidth;
+  mc.height = unit.clientHeight * 0.72;
+}
+resizeCanvas();
+window.addEventListener('resize', () => { resizeCanvas(); if(!playing) drawMain(new Array(BANDS).fill(0)); });
+
+// ── メイン描画 ──
+function drawMain(lvs){
+  const W=mc.width, H=mc.height;
+  mctx.clearRect(0,0,W,H);
+  mctx.fillStyle='#010110';
+  mctx.fillRect(0,0,W,H);
+
+  const PAD    = W * 0.04;
+  const baseY  = H - H*0.04;
+  const topY   = H * 0.04;
+  const totalW = W - PAD*2;
+  const slotW  = totalW / BANDS;
+  const barBW  = slotW * 0.80;
+  const cellGap= 2;
+
+  const fanCX  = W / 2;
+  const fanCY  = topY - H * 1.0; // 傾き強め
+
+  function perspX(bx, y){
+    const t = (y - fanCY) / (baseY - fanCY);
+    return fanCX + (bx - fanCX) * t;
+  }
+
+  const totalBarH = baseY - topY;
+  const cellH = (totalBarH - cellGap * CELLS) / CELLS;
+
+  for(let b=0;b<BANDS;b++){
+    const lv       = Math.min(1, Math.max(0, lvs[b]));
+    const litCells = Math.round(lv * CELLS);
+    const pk       = peaks[b];
+    const pkCell   = Math.round(pk * CELLS);
+    const bx       = PAD + b*slotW + slotW/2;
+    const bLeft    = bx - barBW/2;
+    const bRight   = bx + barBW/2;
+
+    for(let c=0;c<CELLS;c++){
+      const ratio  = c / CELLS;
+      const isPeak = (c===pkCell-1) && pk>0.05;
+      const cBot   = baseY - c*(cellH+cellGap);
+      const cTop   = cBot - cellH;
+
+      const cBotL = perspX(bLeft,  cBot);
+      const cBotR = perspX(bRight, cBot);
+      const cTopL = perspX(bLeft,  cTop);
+      const cTopR = perspX(bRight, cTop);
+
+      let color;
+      if(isPeak)            color='#ccddee';
+      else if(c<litCells){
+        if      (ratio<0.30) color='#3388aa';
+        else if (ratio<0.55) color='#992200';
+        else if (ratio<0.75) color='#aa5500';
+        else                 color='#227744';
+      } else {
+        if      (ratio<0.30) color='#0a2a3a';
+        else if (ratio<0.55) color='#180400';
+        else if (ratio<0.75) color='#160600';
+        else                 color='#001808';
+      }
+
+      mctx.fillStyle=color;
+      if(c<litCells||isPeak){ mctx.shadowColor=color; mctx.shadowBlur=isPeak?12:5; }
+      else mctx.shadowBlur=0;
+
+      mctx.beginPath();
+      mctx.moveTo(cBotL,cBot); mctx.lineTo(cBotR,cBot);
+      mctx.lineTo(cTopR,cTop); mctx.lineTo(cTopL,cTop);
+      mctx.closePath(); mctx.fill();
+      mctx.shadowBlur=0;
+    }
+  }
+
+  // ── 左右三角エリアに円弧メーター（アナログ風） ──
+  const lvL = Math.min(1, levels.slice(0,7).reduce((a,b)=>a+b,0)/7);
+  const lvR = Math.min(1, levels.slice(7).reduce((a,b)=>a+b,0)/7);
+
+  // 左三角の中心・半径を計算
+  // 左三角：底辺=左端(0〜PAD+barBW/2)、上辺=0〜perspX(左端バー上端)
+  const leftTopX  = perspX(PAD, topY);   // 左端バー左上端
+  const rightTopX = perspX(W-PAD, topY); // 右端バー右上端
+
+  // 円弧メーターを描く関数
+  // cx,cy=中心, r=半径, lv=レベル(0〜1), label=ラベル
+  function drawArcMeter(cx, cy, r, lv, label){
+    const startAngle = Math.PI * 0.75;  // 左下（225度）
+    const endAngle   = Math.PI * 2.25;  // 右下（405度）
+    const totalAngle = endAngle - startAngle;
+    const SEGS = 16;
+
+    // 背景トラック
+    mctx.beginPath();
+    mctx.arc(cx, cy, r, startAngle, endAngle);
+    mctx.strokeStyle='#0a0a20';
+    mctx.lineWidth=r*0.28;
+    mctx.lineCap='butt';
+    mctx.stroke();
+
+    // 目盛り線（薄く）
+    for(let i=0;i<=SEGS;i++){
+      const a = startAngle + (i/SEGS)*totalAngle;
+      const r1 = r * 1.1, r2 = r * 1.18;
+      mctx.beginPath();
+      mctx.moveTo(cx+Math.cos(a)*r1, cy+Math.sin(a)*r1);
+      mctx.lineTo(cx+Math.cos(a)*r2, cy+Math.sin(a)*r2);
+      mctx.strokeStyle='#112233';
+      mctx.lineWidth=1;
+      mctx.stroke();
+    }
+
+    // セグメント（色付き）
+    for(let i=0;i<SEGS;i++){
+      const ratio = i / SEGS;
+      const a1 = startAngle + (i/SEGS)*totalAngle + 0.02;
+      const a2 = startAngle + ((i+1)/SEGS)*totalAngle - 0.02;
+      const isLit = ratio < lv;
+      let color;
+      if(isLit){
+        if      (ratio > 0.75) color='#ff2200';
+        else if (ratio > 0.55) color='#ffcc00';
+        else                   color='#00cc44';
+      } else {
+        if      (ratio > 0.75) color='#1a0000';
+        else if (ratio > 0.55) color='#1a1000';
+        else                   color='#001a08';
+      }
+      mctx.beginPath();
+      mctx.arc(cx, cy, r, a1, a2);
+      mctx.strokeStyle=color;
+      mctx.lineWidth=r*0.26;
+      if(isLit){ mctx.shadowColor=color; mctx.shadowBlur=6; }
+      else mctx.shadowBlur=0;
+      mctx.stroke();
+      mctx.shadowBlur=0;
+    }
+
+    // 針
+    const needleAngle = startAngle + lv * totalAngle;
+    mctx.beginPath();
+    mctx.moveTo(cx, cy);
+    mctx.lineTo(cx + Math.cos(needleAngle)*r*0.85, cy + Math.sin(needleAngle)*r*0.85);
+    mctx.strokeStyle='#ffffff';
+    mctx.lineWidth=1.5;
+    mctx.shadowColor='#ffffff';
+    mctx.shadowBlur=6;
+    mctx.stroke();
+    mctx.shadowBlur=0;
+
+    // 中心点
+    mctx.beginPath();
+    mctx.arc(cx, cy, r*0.08, 0, Math.PI*2);
+    mctx.fillStyle='#aaaacc';
+    mctx.fill();
+
+    // ラベル
+    mctx.font=`bold ${r*0.3}px "Orbitron"`;
+    mctx.fillStyle='#446688';
+    mctx.textAlign='center';
+    mctx.fillText(label, cx, cy + r*0.35);
+  }
+
+  // 左三角エリア中心・半径
+  const lTriW = leftTopX;
+  const lCX   = lTriW * 0.35;
+  const lCY   = topY + (baseY-topY)*0.15;
+  const lR    = Math.min(lTriW*0.22, (baseY-topY)*0.14);
+  drawArcMeter(lCX, lCY, lR, lvL, 'L');
+
+  // 右三角エリア中心・半径
+  const rTriW = W - rightTopX;
+  const rCX   = rightTopX + rTriW * 0.65;
+  const rCY   = topY + (baseY-topY)*0.15;
+  const rR    = Math.min(rTriW*0.22, (baseY-topY)*0.14);
+  drawArcMeter(rCX, rCY, rR, lvR, 'R');
+
+  // ── 六角格子マスク（正しいハニカム配置） ──
+  // 平頂六角形（flat-top）で隙間なく敷き詰める
+  const HR   = 3.5;                    // 小さく（6→3.5）
+  const HW   = HR * 2;                 // 六角形の幅
+  const HH   = HR * Math.sqrt(3);      // 六角形の高さ
+  const colStep = HW * 0.75;           // 列方向のXステップ
+  const rowStep = HH;                  // 行方向のYステップ
+  const cols2 = Math.ceil(W / colStep) + 2;
+  const rows2 = Math.ceil(H / rowStep) + 2;
+
+  mctx.save();
+  mctx.strokeStyle = '#000020';
+  mctx.lineWidth   = 0.3;
+  mctx.globalAlpha = 0.35;
+
+  for(let row = -1; row < rows2; row++){
+    for(let col = -1; col < cols2; col++){
+      const cx = col * colStep;
+      const cy = row * rowStep + (col % 2 === 0 ? 0 : HH * 0.5);
+
+      mctx.beginPath();
+      for(let i = 0; i < 6; i++){
+        const angle = (Math.PI / 3) * i;  // flat-top
+        const px = cx + HR * Math.cos(angle);
+        const py = cy + HR * Math.sin(angle);
+        i === 0 ? mctx.moveTo(px, py) : mctx.lineTo(px, py);
+      }
+      mctx.closePath();
+      mctx.stroke();
+    }
+  }
+  mctx.restore();
+
+  // 薄い白っぽいオーバーレイ（液晶の白浮き感）
+  mctx.save();
+  mctx.globalAlpha = 0.06;
+  mctx.fillStyle   = '#aabbcc';
+  mctx.fillRect(0, 0, W, H);
+  mctx.restore();
+}
+
+// ── デモ ──
+function stepDemo(){
+  tick++;
+  if(tick%8===0){
+    const e=0.5+Math.random()*0.45;
+    for(let i=0;i<BANDS;i++){
+      const t=i/BANDS;
+      const base=t<0.25?0.7+Math.random()*0.3:t<0.6?0.5+Math.random()*0.4:0.2+Math.random()*0.35;
+      targets[i]=Math.min(1,e*base);
+    }
+  }
+  for(let i=0;i<BANDS;i++){
+    levels[i]+=(targets[i]-levels[i])*0.15;
+    if(levels[i]>peaks[i]) peaks[i]=levels[i];
+    else { peaks[i]-=0.0012; if(peaks[i]<0)peaks[i]=0; }
+  }
+}
+
+// ── マイク ──
+function stepMic(){
+  if(!analyser||!analyserBuf)return;
+  analyser.getByteFrequencyData(analyserBuf);
+  const len=analyserBuf.length;
+  for(let b=0;b<BANDS;b++){
+    const s=Math.floor((b/BANDS)*len*0.65);
+    const e=Math.floor(((b+1)/BANDS)*len*0.65);
+    let sum=0; for(let j=s;j<e;j++)sum+=analyserBuf[j];
+    const lv=(sum/Math.max(1,e-s))/255;
+    levels[b]+=(lv-levels[b])*0.3;
+    if(levels[b]>peaks[b]) peaks[b]=levels[b];
+    else { peaks[b]-=0.007; if(peaks[b]<0)peaks[b]=0; }
+  }
+}
+
+// ── ラジオ再生 ──
+const RADIO_URL = 'http://yp.shoutcast.com/sbin/tunein-station.pls?id=99510008';
+
+function playRadio(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  if(audioElement){
+    audioElement.pause();
+    audioElement.src = '';
+  }
+  if(fileSource){ try{ fileSource.disconnect(); }catch(e){} }
+
+  audioElement = new Audio();
+  audioElement.crossOrigin = 'anonymous';
+  audioElement.src = RADIO_URL;
+
+  if(!analyser){
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 1024;
+    analyser.smoothingTimeConstant = 0.8;
+    analyserBuf = new Uint8Array(analyser.frequencyBinCount);
+  }
+  try{
+    fileSource = audioCtx.createMediaElementSource(audioElement);
+    fileSource.connect(analyser);
+    analyser.connect(audioCtx.destination);
+  }catch(e){}
+
+  fileActive = true;
+  micActive  = false;
+
+  document.getElementById('scrollText').textContent =
+    'UK 1940s RADIO　　　　SHOUTCAST　　　　UK 1940s RADIO　　　　SHOUTCAST';
+
+  audioCtx.resume().then(()=>{
+    audioElement.play().catch(e => {
+      document.getElementById('scrollText').textContent =
+        'STREAM ERROR - CHECK CONNECTION　　　　STREAM ERROR - CHECK CONNECTION';
+    });
+    if(!playing){
+      playing = true;
+      document.getElementById('playBtn').textContent = '⏸';
+      loop();
+    }
+  });
+}
+let fileSource   = null;
+let fileActive   = false;
+
+function loadFile(event){
+  const file = event.target.files[0];
+  if(!file) return;
+
+  // AudioContext初期化
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+  // 既存の再生を停止
+  if(audioElement){
+    audioElement.pause();
+    audioElement.src = '';
+  }
+  if(fileSource){ try{ fileSource.disconnect(); }catch(e){} }
+
+  // audio要素で再生
+  audioElement = new Audio();
+  audioElement.src = URL.createObjectURL(file);
+  audioElement.loop = false;
+
+  // analyserに接続
+  if(!analyser){
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 1024;
+    analyser.smoothingTimeConstant = 0.8;
+    analyserBuf = new Uint8Array(analyser.frequencyBinCount);
+  }
+  fileSource = audioCtx.createMediaElementSource(audioElement);
+  fileSource.connect(analyser);
+  analyser.connect(audioCtx.destination);
+
+  fileActive = true;
+  micActive  = false;
+  document.getElementById('micBtn').className = 'mic-btn';
+
+  // トラック名を表示
+  const name   = file.name.replace(/\.[^.]+$/, '');
+  const artist = 'LOCAL FILE';
+  document.getElementById('scrollText').textContent =
+    name + '　　　　' + artist + '　　　　' + name + '　　　　' + artist;
+  drawSeg(trackCtx, trackC.width, trackC.height, '01/01', '#00ccff', '#001428');
+
+  // 自動再生
+  audioCtx.resume().then(()=>{
+    audioElement.play();
+    if(!playing){
+      playing = true;
+      document.getElementById('playBtn').textContent = '⏸';
+      loop();
+    }
+  });
+}
+
+// ── ループ（ファイル再生対応） ──
+function loop(){
+  if(!playing)return;
+  if(fileActive && analyser) stepMic();
+  else if(micActive && analyser) stepMic();
+  else stepDemo();
+  drawMain(levels);
+  animId=requestAnimationFrame(loop);
+}
+
+// ── コントロール ──
+function togglePlay(){
+  playing=!playing;
+  const pb=document.getElementById('playBtn');
+  if(playing){
+    pb.textContent='⏸';
+    if(audioCtx) audioCtx.resume();
+    if(audioElement) audioElement.play();
+    loop();
+  } else {
+    pb.textContent='▶';
+    cancelAnimationFrame(animId);
+    if(audioElement) audioElement.pause();
+    drawMain(new Array(BANDS).fill(0));
+  }
+}
+function prevTrack(){ trackIdx=(trackIdx-1+TRACKS.length)%TRACKS.length; updateInfo(); }
+function nextTrack(){ trackIdx=(trackIdx+1)%TRACKS.length; updateInfo(); }
+function searchTrack(){
+  // サーチ：次のトラックへ（本来はファイルピッカー等）
+  nextTrack();
+}
+async function toggleMic(){
+  const btn=document.getElementById('micBtn');
+  if(micActive){
+    if(micStream)micStream.getTracks().forEach(t=>t.stop());
+    micActive=false; analyser=null; analyserBuf=null;
+    btn.className='mic-btn'; btn.textContent='MIC';
+  } else {
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+      micStream=stream;
+      if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+      const src=audioCtx.createMediaStreamSource(stream);
+      analyser=audioCtx.createAnalyser();
+      analyser.fftSize=1024; analyser.smoothingTimeConstant=0.8;
+      analyserBuf=new Uint8Array(analyser.frequencyBinCount);
+      src.connect(analyser);
+      micActive=true;
+      btn.className='mic-btn on'; btn.textContent='MIC';
+      trackIdx=3; updateInfo();
+    }catch(e){ console.log('mic denied'); }
+  }
+}
+
+// ── 初期化 ──
+drawMain(new Array(BANDS).fill(0));
+</script>
+</body>
+</html>
